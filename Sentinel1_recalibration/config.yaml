@@ -1,0 +1,5 @@
+AUX_CAL: "S1B_AUX_CAL_V20160422T000000_G20210104T140113.SAFE"
+AUX_PP1: "S1B_AUX_PP1_V20160422T000000_G20220323T140710.SAFE"
+PATH_DATA: "/home/datawork-cersat-public/cache/project/sarwave/data/products/tests/recalibrated_data_from_mpc_kersten/original_data"
+
+OUTPUTDIR: "/home/datawork-cersat-public/cache/project/sarwave/data/products/tests/recalibrated_data_from_mpc_kersten/newtiff"
