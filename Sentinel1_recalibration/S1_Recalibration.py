@@ -12,29 +12,32 @@ from Sentinel1_recalibration.aux_cal_tools import get_geap_gains
 from Sentinel1_recalibration.annot_tools import get_bounds, getOffboresightAngle
 
 
+import Sentinel1_recalibration
+local_config_potential_path = os.path.join(os.path.dirname(Sentinel1_recalibration.__file__), 'config.yaml')
+
 def load_config():
-    with open("./../config.yaml", 'r') as stream:
+    with open(local_config_potential_path, 'r') as stream:
         config = yaml.safe_load(stream)
     return config
 
 
 config = load_config()
-AUX_CAL = config["AUX_CAL"]
-AUX_PP1 = config["AUX_PP1"]
+
 PATH_DATA = config["PATH_DATA"]
 INTEREST_VAR = ["sigma0_raw"]
 OUTPUTDIR = config["OUTPUTDIR"]
 
 
 class S1_Recalibration:
-    def __init__(self, L1_path, resolution=None):
+    def __init__(self, L1_path, aux_version_config, resolution=None):
 
         self.config = config
 
         self.L1_path = L1_path
         self.SAFE = os.path.basename(L1_path)
 
-        self.s1dt = xsar.Sentinel1Dataset(L1_path, resolution=resolution)
+        # forced res. None
+        self.s1dt = xsar.Sentinel1Dataset(L1_path, resolution=None)
 
         self.product_type = self.s1dt.sar_meta.manifest_attrs['product_type']
         self.product = self.s1dt.sar_meta.product
@@ -47,8 +50,8 @@ class S1_Recalibration:
         self.dataset = self.s1dt.dataset
 
         self.get_aux_paths()
-        self.get_new_AUX_CAL_path()
-        self.get_new_AUX_PP1_path()
+        self.get_new_AUX_CAL_path(aux_version_config)
+        self.get_new_AUX_PP1_path(aux_version_config)
 
         self.dict_geap_old = self.get_geap_dict(self.PATH_AUX_CAL_OLD)
         self.dict_geap_new = self.get_geap_dict(self.PATH_AUX_CAL_NEW)
@@ -74,27 +77,27 @@ class S1_Recalibration:
         """
         aux_paths = get_aux_paths(self.L1_path)
         self.PATH_AUX_CAL_OLD = os.path.join(
-            PATH_DATA, "AUX_CAL", aux_paths['AUX_CAL'], "data", aux_paths['AUX_CAL'][0:3].lower(), "-aux-cal.xml")
-        self.PATH_AUX_CAL_OLD = os.path.join(
-            PATH_DATA, "AUX_PP1", aux_paths['AUX_PP1'], "data", aux_paths['AUX_PP1'][0:3].lower(), "-aux-pp1.xml")
+            PATH_DATA, "AUX_CAL", aux_paths['AUX_CAL'], "data", aux_paths['AUX_CAL'][0:3].lower() + "-aux-cal.xml")
+        self.PATH_AUX_PP1_OLD = os.path.join(
+            PATH_DATA, "AUX_PP1", aux_paths['AUX_PP1'], "data", aux_paths['AUX_PP1'][0:3].lower() + "-aux-pp1.xml")
         # self.PATH_AUX_INS_OLD = os.path.join(
         #    PATH_DATA, "AUX_INS", + aux_paths['AUX_INS'], "data", aux_paths['AUX_INS'][0:3].lower(), "-aux-ins.xml")
 
     def get_annot_path(self, pol: str, slice_number: int):
         if self.product_type == "GRD":
-            return glob.glob(os.path.join(self.L1_path, "annotation", f"*${self.mode.lower()}*"))[0]
-
+            return glob.glob(os.path.join(self.L1_path, "annotation", f"*{self.mode.lower()}*{pol.lower()}*"))[0]
+        
         else:
             # TODO
-            return glob.glob(os.path.join(self.L1_path, "annotation", f"*${self.mode.lower()}${str(slice_number).lower()}*${pol.lower()}*"))[0]
+            return glob.glob(os.path.join(self.L1_path, "annotation", f"*{self.mode.lower()}*{str(slice_number).lower()}*{pol.lower()}*"))[0]
 
-    def get_new_AUX_CAL_path(self):
+    def get_new_AUX_CAL_path(self,config):
         self.PATH_AUX_CAL_NEW = os.path.join(
-            PATH_DATA, "AUX_CAL", self.config["AUX_CAL"], "data", self.SAFE[0:3].lower(), "-aux-cal.xml")
+            PATH_DATA, "AUX_CAL", self.config["AUX"][self.SAFE[0:3]][config]["AUX_CAL"], "data", self.SAFE[0:3].lower() + "-aux-cal.xml")
 
-    def get_new_AUX_PP1_path(self):
+    def get_new_AUX_PP1_path(self,config):
         self.PATH_AUX_PP1_NEW = os.path.join(
-            PATH_DATA, "AUX_PP1", self.config["AUX_PP1"], "data", self.SAFE[0:3].lower(), "-aux-pp1.xml")
+            PATH_DATA, "AUX_PP1", self.config["AUX"][self.SAFE[0:3]][config]["AUX_PP1"], "data", self.SAFE[0:3].lower() + "-aux-pp1.xml")
 
     def get_geap_dict(self, path_aux_cal):
         return get_geap_gains(path_aux_cal, self.mode, self.polarizations)
@@ -129,32 +132,26 @@ class S1_Recalibration:
         # Assign the interpolated dictionaries to their respective attributes
         self.dict_interp_geap_old, self.dict_interp_geap_new = ret
 
-    def save_netcdf(self, overwrite):
-        if (overwrite or not os.path.exists(self.output_netcdf)):
+    def save_netcdf(self):
+        dataset = self.dataset.copy()
+        for var in INTEREST_VAR:
+            var_db = var+"_dB"
+            dataset = dataset.drop(var_db+"__"+'VV'+"__corrected")
+            dataset = dataset.drop(var_db+"__"+'VH'+"__corrected")
 
-            for var in INTEREST_VAR:
-                var_db = var+"_dB"
-                dataset = self.dataset.copy()
-                dataset = dataset.drop(var_db+"__"+'VV'+"__corrected")
-                dataset = dataset.drop(var_db+"__"+'VH'+"__corrected")
+        dataset = dataset.drop_vars(["spatial_ref", "digital_number"])
 
-            dataset = dataset.drop_vars(["spatial_ref", "digital_number"])
+        for var in ['footprint', 'multidataset', 'rawDataStartTime', 'specialHandlingRequired']:
+            if var in dataset.attrs:
+                dataset.attrs[var] = str(dataset.attrs[var])
+            if "approx_transform" in dataset.attrs:
+                del dataset.attrs["approx_transform"]
 
-            for var in ['footprint', 'multidataset', 'rawDataStartTime', 'specialHandlingRequired']:
-                if var in dataset.attrs:
-                    dataset.attrs[var] = str(dataset.attrs[var])
-                if "approx_transform" in dataset.attrs:
-                    del dataset.attrs["approx_transform"]
+        os.makedirs(os.path.dirname(self.output_netcdf), exist_ok=True)
+        dataset.to_netcdf(self.output_netcdf, mode="w")
+        dataset.close()
 
-            os.makedirs(os.path.dirname(self.output_netcdf), exist_ok=True)
-            dataset.to_netcdf(self.output_netcdf, mode="w")
-            dataset.close()
-
-        else:
-            logging.info(
-                f"save_netcdf -> File {self.output_netcdf} already exists and overwrite is False.")
-
-    def save_tiff(self, dn_new, overwrite):
+    def save_tiff(self, dn_new):
 
         data_array_VV = dn_new.sel(pol="VV").rio.set_spatial_dims(
             y_dim="line", x_dim="sample")

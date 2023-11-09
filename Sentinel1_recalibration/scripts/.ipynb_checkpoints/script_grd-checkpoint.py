@@ -1,34 +1,35 @@
 import time
 
-from Sentinel1_recalibration.utils import get_memory_usage
+from Sentinel1_recalibration.utils import get_memory_usage, copy_tree, ignore_files
 from Sentinel1_recalibration.S1_Recalibration import *
 
-
-def recalibrate_grd(input_file, save_netcdf=False, overwrite_netcdf=False, save_tiff=True, overwrite_tiff=False):
-    s1_recalibrer = S1_Recalibration(input_file)
-
-    logging.info(
-        f"save_netcdf is {save_netcdf} & save_tiff is {save_tiff}.")
+def recalibrate_grd(input_file, aux_version_config, save_netcdf=False, overwrite_netcdf=False, save_tiff=True, overwrite_tiff=False):
+    s1_recalibrer = S1_Recalibration(input_file, aux_version_config)
     
+    if "sigma0_raw" not in INTEREST_VAR:
+        logging.error(f"sigma0_raw must be in INTEREST_VAR={INTEREST_VAR}. Yet, we only use sigma0 to retrieve DN. Returning")
+        return
+
+    logging.info(f"save_netcdf is {save_netcdf} & save_tiff is {save_tiff}.")
     if save_netcdf:
         s1_recalibrer.output_netcdf = os.path.join(
-            OUTPUTDIR, "netcdf", s1_recalibrer.SAFE, "output.nc")
-        
+            OUTPUTDIR, "netcdf", aux_version_config, s1_recalibrer.SAFE, "output.nc")
+
         if (overwrite_netcdf is False and os.path.exists(s1_recalibrer.output_netcdf)):
-            logging.error(
-                f"save_netcdf -> File {s1_recalibrer.output_netcdf} already exists and overwrite is False.")
+            logging.warn(
+                f"save_netcdf -> netcdf file already exists and overwrite_netcdf is False.")
             save_netcdf = False
 
     if save_tiff:
         s1_recalibrer.outputdir_safe = os.path.join(
-            OUTPUTDIR, s1_recalibrer.SAFE.replace(".SAFE", "_recal.SAFE"))
+            OUTPUTDIR, "L1_recalibrated", aux_version_config ,s1_recalibrer.SAFE.replace(".SAFE", "_recal.SAFE"))
         s1_recalibrer.outputdir_measurement = os.path.join(
             s1_recalibrer.outputdir_safe, "measurement")
 
         measurement_vv = os.path.basename(
-            glob.glob(s1_recalibrer.L1_path+"/measurement/"+"*-vv-*.tiff")[0])
+            glob.glob(os.path.join(s1_recalibrer.L1_path, "measurement/", "*-vv-*.tiff"))[0])
         measurement_vh = os.path.basename(
-            glob.glob(s1_recalibrer.L1_path+"/measurement/"+"*-vh-*.tiff")[0])
+            glob.glob(os.path.join(s1_recalibrer.L1_path, "measurement/", "*-vh-*.tiff"))[0])
 
         s1_recalibrer.outputfile_vv = os.path.join(
             s1_recalibrer.outputdir_measurement, measurement_vv)
@@ -36,19 +37,22 @@ def recalibrate_grd(input_file, save_netcdf=False, overwrite_netcdf=False, save_
             s1_recalibrer.outputdir_measurement, measurement_vh)
 
         if (overwrite_tiff is False and os.path.exists(s1_recalibrer.outputfile_vv) and os.path.exists(s1_recalibrer.outputfile_vh)):
-            logging.error(
-                f"save_tiff -> File {s1_recalibrer.outputfile_vv} and {s1_recalibrer.outputfile_vh} already exists and overwrite is False.")
+            logging.warn(
+                f"save_tiff -> vh & vv tiff files already exist and overwrite_tiff is False.")
             save_tiff = False
 
     if save_netcdf is False and save_tiff is False:
-        logging.error(
-            "save_netcdf and save_tiff are now both False. Nothing to do.")
+        logging.warn(
+            "save_netcdf and save_tiff are now both False. Nothing to do. Returning.")
         return
-    
-    
+    else:
+        logging.info(f"save_netcdf is now {save_netcdf} & save_tiff is now {save_tiff}.")
+
     s1_recalibrer.create_interp_dict_geap()  # GRD only
 
     for pol in s1_recalibrer.polarizations:
+        logging.info(f"starting pol={pol}")
+
         annot_slice = s1_recalibrer.get_annot_path(pol, 0)
         swath_bounds = s1_recalibrer.get_swath_bounds(annot_slice)
 
@@ -75,6 +79,9 @@ def recalibrate_grd(input_file, save_netcdf=False, overwrite_netcdf=False, save_
         array_gproc_new = np.full_like(offboresightAngle, np.nan, dtype=float)
 
         for slice_value in unique_slices:
+            
+            logging.info(f"starting pol={pol}-slice={slice_value}")
+
             current_indices = np.where(swath_tab == slice_value)
             interp_geap_old = s1_recalibrer.dict_interp_geap_old.get(
                 f'{s1_recalibrer.mode}{slice_value}_{pol}')
@@ -140,8 +147,7 @@ def recalibrate_grd(input_file, save_netcdf=False, overwrite_netcdf=False, save_
             s1_recalibrer.dataset[var_db+"__corrected"]/10)
 
     if save_netcdf:
-
-        s1_recalibrer.save_netcdf(overwrite_netcdf)
+        s1_recalibrer.save_netcdf()
 
     if save_tiff:
 
@@ -149,11 +155,14 @@ def recalibrate_grd(input_file, save_netcdf=False, overwrite_netcdf=False, save_
             s1_recalibrer.s1dt._dataset[var] = s1_recalibrer.dataset[var+"__corrected"]
 
             dn_new = s1_recalibrer.s1dt.reverse_calibration_lut("sigma0_raw")
-            s1_recalibrer.save_tiff(dn_new, overwrite_tiff)
+            s1_recalibrer.save_tiff(dn_new)
         else:
-            logging.error("sigma0_raw not in INTEREST_VAR")
+            logging.error("sigma0_raw not in INTEREST_VAR. Returnin")
+            return 
+        
+        copy_tree(s1_recalibrer.L1_path, s1_recalibrer.outputdir_safe, ignore=ignore_files)
 
-    s1_recalibrer.close_ds()
+    s1_recalibrer.close_dss()
 
 
 def processor_grd():
@@ -164,9 +173,10 @@ def processor_grd():
     parser = argparse.ArgumentParser(
         description='Perform inversion from S1(L1-GRD) SAFE, L1-RCM, L1-RS2 ; using xsar/xsarsea tools')
     parser.add_argument('--input_file', help='input file path', required=True)
-    parser.add_argument('--config_file',
-                        help='config file path [if not provided will take config file based on input file]',
-                        required=False, default=None)
+    parser.add_argument('--aux_version_config',
+                        help='version name of the wanted new AUX conf files.',
+                        required=False, default="v_IPF_36")
+    
     parser.add_argument('--verbose', action='store_true', default=False)
 
     parser.add_argument('--overwrite_netcdf', action='store_true', default=False,
@@ -183,7 +193,7 @@ def processor_grd():
 
     args = parser.parse_args()
     fmt = '%(asctime)s %(levelname)s %(filename)s(%(lineno)d) %(message)s'
-    
+
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, format=fmt,
                             datefmt='%d/%m/%Y %H:%M:%S', force=True)
@@ -196,11 +206,12 @@ def processor_grd():
 
     logging.info('input file: %s', input_file)
 
-    recalibrate_grd(input_file, save_netcdf=args.save_netcdf,
+    recalibrate_grd(input_file, args.aux_version_config, save_netcdf=args.save_netcdf,
                     overwrite_netcdf=args.overwrite_netcdf, save_tiff=args.save_tiff, overwrite_tiff=args.overwrite_tiff)
 
     logging.info('current memory usage: %s ', get_memory_usage(var='current'))
     logging.info('done in %1.3f min', (time.time() - t0) / 60.)
+
 
 if __name__ == "__main__":
     processor_grd()
