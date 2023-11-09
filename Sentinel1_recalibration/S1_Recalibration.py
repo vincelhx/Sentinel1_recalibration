@@ -30,14 +30,13 @@ OUTPUTDIR = config["OUTPUTDIR"]
 
 class S1_Recalibration:
     def __init__(self, L1_path, aux_version_config, resolution=None):
-
         self.config = config
-
+        self.resolution = resolution
         self.L1_path = L1_path
         self.SAFE = os.path.basename(L1_path)
 
         # forced res. None
-        self.s1dt = xsar.Sentinel1Dataset(L1_path, resolution=None)
+        self.s1dt = xsar.Sentinel1Dataset(L1_path, resolution=resolution)
 
         self.product_type = self.s1dt.sar_meta.manifest_attrs['product_type']
         self.product = self.s1dt.sar_meta.product
@@ -46,7 +45,6 @@ class S1_Recalibration:
         self.polarizations = self.s1dt.sar_meta.manifest_attrs["polarizations"].tolist(
         )
 
-        self.resolution = resolution
         self.dataset = self.s1dt.dataset
 
         self.get_aux_paths()
@@ -149,20 +147,28 @@ class S1_Recalibration:
 
         os.makedirs(os.path.dirname(self.output_netcdf), exist_ok=True)
         dataset.to_netcdf(self.output_netcdf, mode="w")
+        logging.info('saved in netcdf: %s', self.output_netcdf)
+
         dataset.close()
 
     def save_tiff(self, dn_new):
+
+        os.makedirs(os.path.dirname(self.outputfile_vv), exist_ok=True)
 
         data_array_VV = dn_new.sel(pol="VV").rio.set_spatial_dims(
             y_dim="line", x_dim="sample")
         data_array_VH = dn_new.sel(pol="VH").rio.set_spatial_dims(
             y_dim="line", x_dim="sample")
-
+        
         # For VV
         data_array_VV.rio.to_raster(self.outputfile_vv)
         # For VH
         data_array_VH.rio.to_raster(self.outputfile_vh)
+        
+        logging.info('tiff saved: %s', os.path.self.outputfile_vv)
+        logging.info('tiff saved: %s', os.path.self.outputfile_vh)
 
+        
     def close_dss(self):
         self.dataset.close()
         self.s1dt.dataset.close()

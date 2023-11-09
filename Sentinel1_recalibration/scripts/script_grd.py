@@ -3,8 +3,8 @@ import time
 from Sentinel1_recalibration.utils import get_memory_usage, copy_tree, ignore_files
 from Sentinel1_recalibration.S1_Recalibration import *
 
-def recalibrate_grd(input_file, aux_version_config, save_netcdf=False, overwrite_netcdf=False, save_tiff=True, overwrite_tiff=False):
-    s1_recalibrer = S1_Recalibration(input_file, aux_version_config)
+def recalibrate_grd(input_file, aux_version_config, resolution=None, save_netcdf=False, overwrite_netcdf=False, save_tiff=True, overwrite_tiff=False):
+    s1_recalibrer = S1_Recalibration(input_file, aux_version_config, resolution)
     
     if "sigma0_raw" not in INTEREST_VAR:
         logging.error(f"sigma0_raw must be in INTEREST_VAR={INTEREST_VAR}. Yet, we only use sigma0 to retrieve DN. Returning")
@@ -12,8 +12,12 @@ def recalibrate_grd(input_file, aux_version_config, save_netcdf=False, overwrite
 
     logging.info(f"save_netcdf is {save_netcdf} & save_tiff is {save_tiff}.")
     if save_netcdf:
-        s1_recalibrer.output_netcdf = os.path.join(
-            OUTPUTDIR, "netcdf", aux_version_config, s1_recalibrer.SAFE, "output.nc")
+        if resolution == None:
+            s1_recalibrer.output_netcdf = os.path.join(
+                OUTPUTDIR, "netcdf", aux_version_config, s1_recalibrer.SAFE, "output" +"fullres"+ ".nc")            
+        else:
+            s1_recalibrer.output_netcdf = os.path.join(
+                OUTPUTDIR, "netcdf", aux_version_config, s1_recalibrer.SAFE, "output" +resolution+ ".nc")
 
         if (overwrite_netcdf is False and os.path.exists(s1_recalibrer.output_netcdf)):
             logging.warn(
@@ -23,6 +27,8 @@ def recalibrate_grd(input_file, aux_version_config, save_netcdf=False, overwrite
     if save_tiff:
         s1_recalibrer.outputdir_safe = os.path.join(
             OUTPUTDIR, "L1_recalibrated", aux_version_config ,s1_recalibrer.SAFE.replace(".SAFE", "_recal.SAFE"))
+        
+        
         s1_recalibrer.outputdir_measurement = os.path.join(
             s1_recalibrer.outputdir_safe, "measurement")
 
@@ -177,6 +183,11 @@ def processor_grd():
                         help='version name of the wanted new AUX conf files.',
                         required=False, default="v_IPF_36")
     
+    parser.add_argument('--resolution',
+                    help='resolution in km. only working if save_tiff is false',
+                    required=False, default=None)
+        
+        
     parser.add_argument('--verbose', action='store_true', default=False)
 
     parser.add_argument('--overwrite_netcdf', action='store_true', default=False,
@@ -188,7 +199,7 @@ def processor_grd():
     parser.add_argument('--save_netcdf', action='store_true', default=False,
                         help='save as netcdf format [default is False]', required=False)
 
-    parser.add_argument('--save_tiff', action='store_true', default=True,
+    parser.add_argument('--save_tiff', action='store_true', default=False,
                         help='save as tiff format [default is False]', required=False)
 
     args = parser.parse_args()
@@ -203,10 +214,16 @@ def processor_grd():
 
     t0 = time.time()
     input_file = args.input_file.rstrip('/')
-
+    
     logging.info('input file: %s', input_file)
 
-    recalibrate_grd(input_file, args.aux_version_config, save_netcdf=args.save_netcdf,
+        
+    if args.resolution != None: 
+        save_tiff = False
+        logging.info('save_tiff set to False : we save_tiff at full resolution only')
+        
+    
+    recalibrate_grd(input_file, args.aux_version_config, resolution = args.resolution, save_netcdf=args.save_netcdf,
                     overwrite_netcdf=args.overwrite_netcdf, save_tiff=args.save_tiff, overwrite_tiff=args.overwrite_tiff)
 
     logging.info('current memory usage: %s ', get_memory_usage(var='current'))

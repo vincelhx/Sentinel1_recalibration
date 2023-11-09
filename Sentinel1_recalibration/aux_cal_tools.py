@@ -73,7 +73,6 @@ def get_geap_gains(path_aux_cal, mode, pols):
         return a dict for the given (mode+pols).
         this dictionnary contains a dict with offboresight angle values and associated gains values
     """
-    print(path_aux_cal)
     with open(path_aux_cal, 'rb') as file:
         xml = file.read()
         
