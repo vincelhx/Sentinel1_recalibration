@@ -11,10 +11,12 @@ from Sentinel1_recalibration.aux_pp1_tools import get_all_gproc
 from Sentinel1_recalibration.aux_cal_tools import get_geap_gains
 from Sentinel1_recalibration.annot_tools import get_bounds, getOffboresightAngle
 
+
 def load_config():
     with open("./../config.yaml", 'r') as stream:
         config = yaml.safe_load(stream)
     return config
+
 
 config = load_config()
 AUX_CAL = config["AUX_CAL"]
@@ -71,28 +73,28 @@ class S1_Recalibration:
 
         """
         aux_paths = get_aux_paths(self.L1_path)
-        self.PATH_AUX_CAL_OLD = PATH_DATA+"/AUX_CAL/" + \
-            aux_paths['AUX_CAL'] + "/data/" + \
-            aux_paths['AUX_CAL'][0:3].lower()+"-aux-cal.xml"
-        self.PATH_AUX_PP1_OLD = PATH_DATA+"/AUX_PP1/" + \
-            aux_paths['AUX_PP1'] + "/data/" + \
-            aux_paths['AUX_PP1'][0:3].lower()+"-aux-pp1.xml"
-        # PATH_AUX_INS_OLD = path_original_data+"AUX_INS/" + aux_paths['AUX_INS'] +"/data/" + aux_paths['AUX_INS'][0:3].lower()+"-aux-ins.xml"
+        self.PATH_AUX_CAL_OLD = os.path.join(
+            PATH_DATA, "AUX_CAL", aux_paths['AUX_CAL'], "data", aux_paths['AUX_CAL'][0:3].lower(), "-aux-cal.xml")
+        self.PATH_AUX_CAL_OLD = os.path.join(
+            PATH_DATA, "AUX_PP1", aux_paths['AUX_PP1'], "data", aux_paths['AUX_PP1'][0:3].lower(), "-aux-pp1.xml")
+        # self.PATH_AUX_INS_OLD = os.path.join(
+        #    PATH_DATA, "AUX_INS", + aux_paths['AUX_INS'], "data", aux_paths['AUX_INS'][0:3].lower(), "-aux-ins.xml")
 
     def get_annot_path(self, pol: str, slice_number: int):
         if self.product_type == "GRD":
-            return glob.glob(
-                self.L1_path+"/annotation/*"+self.mode.lower()+"*"+pol.lower()+"*")[0]
+            return glob.glob(os.path.join(self.L1_path, "annotation", f"*${self.mode.lower()}*"))[0]
+
         else:
-            return glob.glob(self.L1_path+"/annotation/*"+self.mode.lower()+str(slice_number).lower()+"*"+pol.lower()+"*")[0]
+            # TODO
+            return glob.glob(os.path.join(self.L1_path, "annotation", f"*${self.mode.lower()}${str(slice_number).lower()}*${pol.lower()}*"))[0]
 
     def get_new_AUX_CAL_path(self):
-        self.PATH_AUX_CAL_NEW = PATH_DATA+"/AUX_CAL/"+self.config["AUX_CAL"]+"/data/" + \
-            self.SAFE[0:3].lower()+"-aux-cal.xml"
+        self.PATH_AUX_CAL_NEW = os.path.join(
+            PATH_DATA, "AUX_CAL", self.config["AUX_CAL"], "data", self.SAFE[0:3].lower(), "-aux-cal.xml")
 
     def get_new_AUX_PP1_path(self):
-        self.PATH_AUX_PP1_NEW = PATH_DATA+"/AUX_PP1/"+self.config["AUX_PP1"]+"/data/" + \
-            self.SAFE[0:3].lower()+"-aux-pp1.xml"
+        self.PATH_AUX_PP1_NEW = os.path.join(
+            PATH_DATA, "AUX_PP1", self.config["AUX_PP1"], "data", self.SAFE[0:3].lower(), "-aux-pp1.xml")
 
     def get_geap_dict(self, path_aux_cal):
         return get_geap_gains(path_aux_cal, self.mode, self.polarizations)

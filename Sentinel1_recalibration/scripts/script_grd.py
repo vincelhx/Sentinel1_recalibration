@@ -9,11 +9,11 @@ def recalibrate_grd(input_file, save_netcdf=False, overwrite_netcdf=False, save_
 
     logging.info(
         f"save_netcdf is {save_netcdf} & save_tiff is {save_tiff}.")
-    
+
     if save_netcdf:
         s1_recalibrer.output_netcdf = os.path.join(
             OUTPUTDIR, "netcdf", s1_recalibrer.SAFE, "output.nc")
-        
+
         if (overwrite_netcdf is False and os.path.exists(s1_recalibrer.output_netcdf)):
             logging.error(
                 f"save_netcdf -> File {s1_recalibrer.output_netcdf} already exists and overwrite is False.")
@@ -26,9 +26,9 @@ def recalibrate_grd(input_file, save_netcdf=False, overwrite_netcdf=False, save_
             s1_recalibrer.outputdir_safe, "measurement")
 
         measurement_vv = os.path.basename(
-            glob.glob(s1_recalibrer.L1_path+"/measurement/"+"*-vv-*.tiff")[0])
+            glob.glob(os.path.join(s1_recalibrer.L1_path, "measurement/", "*-vv-*.tiff"))[0])
         measurement_vh = os.path.basename(
-            glob.glob(s1_recalibrer.L1_path+"/measurement/"+"*-vh-*.tiff")[0])
+            glob.glob(os.path.join(s1_recalibrer.L1_path, "measurement/", "*-vh-*.tiff"))[0])
 
         s1_recalibrer.outputfile_vv = os.path.join(
             s1_recalibrer.outputdir_measurement, measurement_vv)
@@ -44,8 +44,7 @@ def recalibrate_grd(input_file, save_netcdf=False, overwrite_netcdf=False, save_
         logging.error(
             "save_netcdf and save_tiff are now both False. Nothing to do.")
         return
-    
-    
+
     s1_recalibrer.create_interp_dict_geap()  # GRD only
 
     for pol in s1_recalibrer.polarizations:
@@ -183,7 +182,7 @@ def processor_grd():
 
     args = parser.parse_args()
     fmt = '%(asctime)s %(levelname)s %(filename)s(%(lineno)d) %(message)s'
-    
+
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, format=fmt,
                             datefmt='%d/%m/%Y %H:%M:%S', force=True)
@@ -201,6 +200,7 @@ def processor_grd():
 
     logging.info('current memory usage: %s ', get_memory_usage(var='current'))
     logging.info('done in %1.3f min', (time.time() - t0) / 60.)
+
 
 if __name__ == "__main__":
     processor_grd()

@@ -27,5 +27,6 @@ def get_all_gproc(path_aux_pp1):
     for product in root_pp1.productList.getchildren():
         for swathParams in product.slcProcParams.swathParamsList.getchildren():
             gains = [float(g) for g in swathParams.gain.text.split(' ')]
-            dict_gains[product.productId+"_"+swathParams.swath] = gains
+            key = product.productId+"_"+swathParams.swath
+            dict_gains[key] = gains
     return dict_gains

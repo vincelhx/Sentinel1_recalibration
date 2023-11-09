@@ -1,0 +1,66 @@
+[project]
+name = "Sentinel1_recalibration"
+description="Package to compute the recalibration of Sentinel-1 images"
+readme = "README.rst"
+
+requires-python = ">= 3.9"
+license = {text = "MIT"}
+
+#author="Vincent Lheureux"
+#author_email='vinc.lheureux@gmail.com'
+
+dependencies = [
+    "xsar",
+    "xarray",
+    "xarray-datatree",
+    "pyyaml",
+    "numpy",
+    "scipy",
+    "fsspec",
+    "aiohttp",
+]
+
+dynamic = ["version"]
+classifiers=[
+        'Development Status :: 2 - Pre-Alpha',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+        'Natural Language :: English',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+    ]
+
+[build-system]
+requires = ["setuptools>=64.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+
+[tool.setuptools]
+name = "nomduprojet"
+version = "0.1.0"
+description = "Une courte description du projet"
+long_description = "file: README.md"
+long_description_content_type = "text/markdown"
+url = "https://url-de-votre-projet"
+
+[tool.setuptools]
+packages = ["Sentinel1_recalibration"]
+
+[tool.setuptools_scm]
+fallback_version = "999"
+
+[tool.isort]
+profile = "black"
+skip_gitignore = true
+float_to_top = true
+default_section = "THIRDPARTY"
+known_first_party = "Sentinel1_recalibration"
+
+[project.scripts]
+#
+#

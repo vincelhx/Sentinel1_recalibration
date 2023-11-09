@@ -21,7 +21,7 @@ def get_aux_paths(L1_path):
 
     aux_paths = {}
 
-    path_manifest = L1_path + "/manifest.safe"
+    path_manifest = os.path.join(L1_path, "/manifest.safe")
 
     # Parse the XML file
     with open(path_manifest, 'rb') as file:
