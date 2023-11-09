@@ -1,0 +1,8 @@
+xsar
+xarray
+xarray-datatree
+pyyaml
+numpy
+scipy
+fsspec
+aiohttp

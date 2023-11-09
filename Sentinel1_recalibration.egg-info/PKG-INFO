@@ -1,0 +1,26 @@
+Metadata-Version: 2.1
+Name: Sentinel1-recalibration
+Version: 0.1.dev2+gca69914.d20231109
+Summary: Package to compute the recalibration of Sentinel-1 images
+License: MIT
+Classifier: Development Status :: 2 - Pre-Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.9
+Description-Content-Type: text/x-rst
+Requires-Dist: xsar
+Requires-Dist: xarray
+Requires-Dist: xarray-datatree
+Requires-Dist: pyyaml
+Requires-Dist: numpy
+Requires-Dist: scipy
+Requires-Dist: fsspec
+Requires-Dist: aiohttp
