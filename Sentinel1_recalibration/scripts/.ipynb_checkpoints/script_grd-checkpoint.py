@@ -3,7 +3,7 @@ import time
 from Sentinel1_recalibration.utils import get_memory_usage, copy_tree, ignore_files
 from Sentinel1_recalibration.S1_Recalibration import *
 
-def recalibrate_grd(input_file, aux_version_config, resolution=None, save_netcdf=False, overwrite_netcdf=False, save_tiff=True, overwrite_tiff=False):
+def recalibrate_grd(input_file, aux_version_config, resolution=None, save_netcdf=False, overwrite_netcdf=False, save_tiff=True, overwrite_tiff=False, fast = False):
     s1_recalibrer = S1_Recalibration(input_file, aux_version_config, resolution)
     
     if "sigma0_raw" not in INTEREST_VAR:
@@ -19,6 +19,9 @@ def recalibrate_grd(input_file, aux_version_config, resolution=None, save_netcdf
             s1_recalibrer.output_netcdf = os.path.join(
                 OUTPUTDIR, "netcdf", aux_version_config, s1_recalibrer.SAFE, "output" +resolution+ ".nc")
 
+        if fast:
+            s1_recalibrer.output_netcdf = s1_recalibrer.output_netcdf.replace(".nc","_reduce.nc")
+            
         if (overwrite_netcdf is False and os.path.exists(s1_recalibrer.output_netcdf)):
             logging.warn(
                 f"save_netcdf -> netcdf file already exists and overwrite_netcdf is False.")
@@ -153,12 +156,12 @@ def recalibrate_grd(input_file, aux_version_config, resolution=None, save_netcdf
             s1_recalibrer.dataset[var_db+"__corrected"]/10)
 
     if save_netcdf:
-        s1_recalibrer.save_netcdf()
+        s1_recalibrer.save_netcdf(fast)
 
     if save_tiff:
 
         if "sigma0_raw" in INTEREST_VAR:
-            s1_recalibrer.s1dt._dataset[var] = s1_recalibrer.dataset[var+"__corrected"]
+            s1_recalibrer.s1dt._dataset["sigma0_raw"] = s1_recalibrer.dataset["sigma0_raw"+"__corrected"]
 
             dn_new = s1_recalibrer.s1dt.reverse_calibration_lut("sigma0_raw")
             s1_recalibrer.save_tiff(dn_new)
@@ -187,7 +190,10 @@ def processor_grd():
                     help='resolution in km. only working if save_tiff is false',
                     required=False, default=None)
         
-        
+    parser.add_argument('--fast', action='store_true', default=False,
+                        help='save in netcdf and only keep some vars',required=False)
+
+    
     parser.add_argument('--verbose', action='store_true', default=False)
 
     parser.add_argument('--overwrite_netcdf', action='store_true', default=False,
@@ -224,7 +230,7 @@ def processor_grd():
         
     
     recalibrate_grd(input_file, args.aux_version_config, resolution = args.resolution, save_netcdf=args.save_netcdf,
-                    overwrite_netcdf=args.overwrite_netcdf, save_tiff=args.save_tiff, overwrite_tiff=args.overwrite_tiff)
+                    overwrite_netcdf=args.overwrite_netcdf, save_tiff=args.save_tiff, overwrite_tiff=args.overwrite_tiff, fast=args.fast)
 
     logging.info('current memory usage: %s ', get_memory_usage(var='current'))
     logging.info('done in %1.3f min', (time.time() - t0) / 60.)

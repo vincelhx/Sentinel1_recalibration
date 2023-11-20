@@ -130,7 +130,7 @@ class S1_Recalibration:
         # Assign the interpolated dictionaries to their respective attributes
         self.dict_interp_geap_old, self.dict_interp_geap_new = ret
 
-    def save_netcdf(self):
+    def save_netcdf(self,fast):
         dataset = self.dataset.copy()
         for var in INTEREST_VAR:
             var_db = var+"_dB"
@@ -146,6 +146,10 @@ class S1_Recalibration:
                 del dataset.attrs["approx_transform"]
 
         os.makedirs(os.path.dirname(self.output_netcdf), exist_ok=True)
+        
+        if fast : 
+            dataset = dataset[["sigma0_raw","sigma0_raw__corrected"]]
+
         dataset.to_netcdf(self.output_netcdf, mode="w")
         logging.info('saved in netcdf: %s', self.output_netcdf)
 
@@ -165,8 +169,8 @@ class S1_Recalibration:
         # For VH
         data_array_VH.rio.to_raster(self.outputfile_vh)
         
-        logging.info('tiff saved: %s', os.path.self.outputfile_vv)
-        logging.info('tiff saved: %s', os.path.self.outputfile_vh)
+        logging.info('tiff saved: %s', self.outputfile_vv)
+        logging.info('tiff saved: %s', self.outputfile_vh)
 
         
     def close_dss(self):
