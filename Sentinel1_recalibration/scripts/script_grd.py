@@ -3,8 +3,8 @@ import time
 from Sentinel1_recalibration.utils import get_memory_usage, copy_tree, ignore_files
 from Sentinel1_recalibration.S1_Recalibration import *
 
-def recalibrate_grd(input_file, aux_version_config, resolution=None, save_netcdf=False, overwrite_netcdf=False, save_tiff=True, overwrite_tiff=False, fast = False):
-    s1_recalibrer = S1_Recalibration(input_file, aux_version_config, resolution)
+def recalibrate_grd(input_file, aux_version_config, config_file = None, resolution=None, save_netcdf=False, overwrite_netcdf=False, save_tiff=True, overwrite_tiff=False, fast = False):
+    s1_recalibrer = S1_Recalibration(input_file, aux_version_config, config_file, resolution)
     
     if "sigma0_raw" not in INTEREST_VAR:
         logging.error(f"sigma0_raw must be in INTEREST_VAR={INTEREST_VAR}. Yet, we only use sigma0 to retrieve DN. Returning")
@@ -14,10 +14,10 @@ def recalibrate_grd(input_file, aux_version_config, resolution=None, save_netcdf
     if save_netcdf:
         if resolution == None:
             s1_recalibrer.output_netcdf = os.path.join(
-                OUTPUTDIR, "netcdf", aux_version_config, s1_recalibrer.SAFE, "output" +"fullres"+ ".nc")            
+                s1_recalibrer.config["OUTPUTDIR"], "netcdf", aux_version_config, s1_recalibrer.SAFE, "output" +"fullres"+ ".nc")            
         else:
             s1_recalibrer.output_netcdf = os.path.join(
-                OUTPUTDIR, "netcdf", aux_version_config, s1_recalibrer.SAFE, "output" +resolution+ ".nc")
+                s1_recalibrer.config["OUTPUTDIR"], "netcdf", aux_version_config, s1_recalibrer.SAFE, "output" +resolution+ ".nc")
 
         if fast:
             s1_recalibrer.output_netcdf = s1_recalibrer.output_netcdf.replace(".nc","_reduce.nc")
@@ -29,7 +29,7 @@ def recalibrate_grd(input_file, aux_version_config, resolution=None, save_netcdf
 
     if save_tiff:
         s1_recalibrer.outputdir_safe = os.path.join(
-            OUTPUTDIR, "L1_recalibrated", aux_version_config ,s1_recalibrer.SAFE.replace(".SAFE", "_recal.SAFE"))
+            s1_recalibrer.config["OUTPUTDIR"], "L1_recalibrated", aux_version_config ,s1_recalibrer.SAFE.replace(".SAFE", "_recal.SAFE"))
         
         
         s1_recalibrer.outputdir_measurement = os.path.join(
@@ -165,12 +165,12 @@ def recalibrate_grd(input_file, aux_version_config, resolution=None, save_netcdf
 
             dn_new = s1_recalibrer.s1dt.reverse_calibration_lut("sigma0_raw")
             s1_recalibrer.save_tiff(dn_new)
+            copy_tree(s1_recalibrer.L1_path, s1_recalibrer.outputdir_safe, ignore=ignore_files)
+
         else:
             logging.error("sigma0_raw not in INTEREST_VAR. Returnin")
             return 
         
-        copy_tree(s1_recalibrer.L1_path, s1_recalibrer.outputdir_safe, ignore=ignore_files)
-
     s1_recalibrer.close_dss()
 
 
@@ -182,6 +182,7 @@ def processor_grd():
     parser = argparse.ArgumentParser(
         description='Perform inversion from S1(L1-GRD) SAFE, L1-RCM, L1-RS2 ; using xsar/xsarsea tools')
     parser.add_argument('--input_file', help='input file path', required=True)
+    
     parser.add_argument('--aux_version_config',
                         help='version name of the wanted new AUX conf files.',
                         required=False, default="v_IPF_36")
@@ -207,7 +208,10 @@ def processor_grd():
 
     parser.add_argument('--save_tiff', action='store_true', default=False,
                         help='save as tiff format [default is False]', required=False)
-
+    
+    parser.add_argument('--config_file', default=None
+                        help='choose the path of the config file ; if None : default config', required=False)
+    
     args = parser.parse_args()
     fmt = '%(asctime)s %(levelname)s %(filename)s(%(lineno)d) %(message)s'
 
@@ -229,7 +233,7 @@ def processor_grd():
         logging.info('save_tiff set to False : we save_tiff at full resolution only')
         
     
-    recalibrate_grd(input_file, args.aux_version_config, resolution = args.resolution, save_netcdf=args.save_netcdf,
+    recalibrate_grd(input_file, args.aux_version_config, config_file = None, resolution = args.resolution, save_netcdf=args.save_netcdf,
                     overwrite_netcdf=args.overwrite_netcdf, save_tiff=args.save_tiff, overwrite_tiff=args.overwrite_tiff, fast=args.fast)
 
     logging.info('current memory usage: %s ', get_memory_usage(var='current'))

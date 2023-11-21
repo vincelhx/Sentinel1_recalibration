@@ -15,22 +15,31 @@ from Sentinel1_recalibration.annot_tools import get_bounds, getOffboresightAngle
 import Sentinel1_recalibration
 local_config_potential_path = os.path.join(os.path.dirname(Sentinel1_recalibration.__file__), 'config.yaml')
 
-def load_config():
-    with open(local_config_potential_path, 'r') as stream:
-        config = yaml.safe_load(stream)
-    return config
+def load_config(config_file):
+    if config_file != None:
+        try :
+            with open(config_file, 'r') as stream:
+                config = yaml.safe_load(stream)
+                return config
+
+        except Exception as e: 
+            logging.warn(f"config_file {config_file} do not exist. Returning default config.")
+            with open(local_config_potential_path, 'r') as stream:
+                config = yaml.safe_load(stream)
+                return config
+            
+    else: 
+        with open(local_config_potential_path, 'r') as stream:
+            config = yaml.safe_load(stream) 
+            return config
 
 
-config = load_config()
-
-PATH_DATA = config["PATH_DATA"]
 INTEREST_VAR = ["sigma0_raw"]
-OUTPUTDIR = config["OUTPUTDIR"]
 
 
 class S1_Recalibration:
-    def __init__(self, L1_path, aux_version_config, resolution=None):
-        self.config = config
+    def __init__(self, L1_path, aux_version_config, config_file = None, resolution=None):
+        self.config = load_config(config_file)
         self.resolution = resolution
         self.L1_path = L1_path
         self.SAFE = os.path.basename(L1_path)
@@ -75,11 +84,11 @@ class S1_Recalibration:
         """
         aux_paths = get_aux_paths(self.L1_path)
         self.PATH_AUX_CAL_OLD = os.path.join(
-            PATH_DATA, "AUX_CAL", aux_paths['AUX_CAL'], "data", aux_paths['AUX_CAL'][0:3].lower() + "-aux-cal.xml")
+            self.config["PATH_DATA"], "AUX_CAL", aux_paths['AUX_CAL'], "data", aux_paths['AUX_CAL'][0:3].lower() + "-aux-cal.xml")
         self.PATH_AUX_PP1_OLD = os.path.join(
-            PATH_DATA, "AUX_PP1", aux_paths['AUX_PP1'], "data", aux_paths['AUX_PP1'][0:3].lower() + "-aux-pp1.xml")
+            self.config["PATH_DATA"], "AUX_PP1", aux_paths['AUX_PP1'], "data", aux_paths['AUX_PP1'][0:3].lower() + "-aux-pp1.xml")
         # self.PATH_AUX_INS_OLD = os.path.join(
-        #    PATH_DATA, "AUX_INS", + aux_paths['AUX_INS'], "data", aux_paths['AUX_INS'][0:3].lower(), "-aux-ins.xml")
+        #    self.config["PATH_DATA"], "AUX_INS", + aux_paths['AUX_INS'], "data", aux_paths['AUX_INS'][0:3].lower(), "-aux-ins.xml")
 
     def get_annot_path(self, pol: str, slice_number: int):
         if self.product_type == "GRD":
@@ -89,13 +98,13 @@ class S1_Recalibration:
             # TODO
             return glob.glob(os.path.join(self.L1_path, "annotation", f"*{self.mode.lower()}*{str(slice_number).lower()}*{pol.lower()}*"))[0]
 
-    def get_new_AUX_CAL_path(self,config):
+    def get_new_AUX_CAL_path(self,aux_version_config):
         self.PATH_AUX_CAL_NEW = os.path.join(
-            PATH_DATA, "AUX_CAL", self.config["AUX"][self.SAFE[0:3]][config]["AUX_CAL"], "data", self.SAFE[0:3].lower() + "-aux-cal.xml")
+            self.config["PATH_DATA"], "AUX_CAL", self.config["AUX"][self.SAFE[0:3]][aux_version_config]["AUX_CAL"], "data", self.SAFE[0:3].lower() + "-aux-cal.xml")
 
-    def get_new_AUX_PP1_path(self,config):
+    def get_new_AUX_PP1_path(self,aux_version_config):
         self.PATH_AUX_PP1_NEW = os.path.join(
-            PATH_DATA, "AUX_PP1", self.config["AUX"][self.SAFE[0:3]][config]["AUX_PP1"], "data", self.SAFE[0:3].lower() + "-aux-pp1.xml")
+            self.config["PATH_DATA"], "AUX_PP1", self.config["AUX"][self.SAFE[0:3]][aux_version_config]["AUX_PP1"], "data", self.SAFE[0:3].lower() + "-aux-pp1.xml")
 
     def get_geap_dict(self, path_aux_cal):
         return get_geap_gains(path_aux_cal, self.mode, self.polarizations)
@@ -156,7 +165,7 @@ class S1_Recalibration:
         dataset.close()
 
     def save_tiff(self, dn_new):
-
+        logging.info("starting save_tiff") 
         os.makedirs(os.path.dirname(self.outputfile_vv), exist_ok=True)
 
         data_array_VV = dn_new.sel(pol="VV").rio.set_spatial_dims(
@@ -164,6 +173,14 @@ class S1_Recalibration:
         data_array_VH = dn_new.sel(pol="VH").rio.set_spatial_dims(
             y_dim="line", x_dim="sample")
         
+        from affine import Affine
+        
+        transform =  Affine(1.0, 0.0, 0.0,
+                            0.0, 1.0, 0.0)
+        
+        data_array_VH.rio.write_transform(transform, inplace=True)
+        data_array_VH.rio.write_transform(transform, inplace=True)
+
         # For VV
         data_array_VV.rio.to_raster(self.outputfile_vv)
         # For VH

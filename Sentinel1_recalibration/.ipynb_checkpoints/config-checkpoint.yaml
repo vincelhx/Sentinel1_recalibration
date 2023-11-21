@@ -24,4 +24,4 @@ AUX:
 
 
 PATH_DATA: "/home/datawork-cersat-public/cache/project/sarwave/data/products/tests/recalibrated_data_from_mpc_kersten/original_data"
-OUTPUTDIR: "/home/datawork-cersat-public/cache/project/sarwave/data/products/tests/recalibrated_data_from_mpc_kersten/newtiff"
+OUTPUTDIR: "/home/datawork-cersat-public/cache/project/sarwave/data/products/tests/recalibrated_data_from_mpc_kersten/recalibrated"
